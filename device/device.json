@@ -1,5 +1,5 @@
 {
-  "deviceId": "SBS003",
+  "thingName": "simpleBeerEdisonThing",
   "location": "San Francisco",
   "short": "SFO",
   "region": "us-east-1",
@@ -7,7 +7,7 @@
     "rotateMessages": 10000,
     "publish": 1020
   },
-  "topic": "sbs",
+  "topicName": "simpleBeerEdisonTopic",
   "logTopic": "logs",
   "certs": {
     "privateKey": "/opt/sbs/cert/private.pem.key",

@@ -32,13 +32,23 @@ Once you get the prints back, you will need a few screws to tie everything toget
 
 > **Note:** This instruction guide will focus on the Intel Edison, however, Johnny-Five supports many platforms. If you are using another platform, simply change the `io: new Edison()` option when instantiating a board object in the *sbs.js* device code.
 
-1. Download the Intel Edison installer and the latest Yocto image. [Intel Downloads](https://software.intel.com/en-us/iot/hardware/edison/downloads).
-2. Run the installer. There are three steps here. Flash the image, set up root user credentials and setup WiFi. **Save the IP Address and the SSH credentials to be used later**.
-3. Ensure that you are on the same network as your device and SSH into the device. You can SSH into the device using *Terminal on a Mac / Linux or Putty on a Windows*.
+1. Download the latest Yocto image. [Intel Downloads](https://downloadcenter.intel.com/product/84575/Intel-Edison-Breakout-Board).
+2. Manually flash the firmware. [How do I update/flash the Intel® Edison board firmware manually?](https://software.intel.com/en-us/node/637974#manual-flash-process)
+3. Connects the board using Ethernet over USB [Connecting to your Board Using Ethernet over USB](https://software.intel.com/en-us/connecting-to-intel-edison-board-using-ethernet-over-usb), for Mac user, download and install [RNDIS](http://joshuawise.com/horndis)
+4. SSH into the device using *Terminal on a Mac / Linux or Putty on a Windows*.
 
   ```
   ssh root@<IP_ADDRESS>
   ```
+5. Setup the connections using [configure_edison](https://software.intel.com/en-us/connecting-your-intel-edison-board-using-wifi)
+
+5. Check for internet connectivity from the board
+
+  ```
+  ping amazon.com
+  ```
+
+5. We needs NS to resolve *data.iot.us-east-1.amazonaws.com* as well. If the NS from DHCP does not resolve *data.iot.us-east-1.amazonaws.com*, add 8.8.8.8 to */etc/resolve.conf*
 
 4. Install Forever (to keep your SBS application running).
 
@@ -109,34 +119,56 @@ npm install -g serverless@0.5.6 yo bower gulp
 1. Create the AWS IoT thing.
 
   ```
-  aws iot create-thing --thing-name <YOUR_UNIT_ID>
+  aws iot create-thing --thing-name <SBS_THING_NAME>
   ```
 
 2. Create a new file titled *iotpolicy.json*.
 
   ```json
   {
-      "Version": "2012-10-17",
-      "Statement": [
-          {
-              "Effect": "Allow",
-              "Action": [
-                  "iot:Connect"
-              ],
-              "Resource": [
-                  "*"
-              ]
-          },
-          {
-              "Effect": "Allow",
-              "Action": [
-                  "iot:Publish"
-              ],
-              "Resource": [
-                  "arn:aws:iot:<REGION>:<ACCOUNT_NUMBER>:topic/<TOPIC_NAME>"
-              ]
-          }
-      ]
+    "Version": "2012-10-17",
+    "Statement": [{
+        "Effect": "Allow",
+        "Action": [
+          "iot:Connect"
+        ],
+        "Resource": [
+          "*"
+        ]
+      },
+      {
+        "Effect": "Allow",
+        "Action": [
+          "iot:Publish"
+        ],
+        "Resource": [
+          "arn:aws:iot:<REGION>:<ACCOUNT_NUMBER>:topic/<SBS_TOPIC_NAME>",
+          "arn:aws:iot:<REGION>:<ACCOUNT_NUMBER>:topic/<SBS_TOPIC_NAME>/*",
+          "arn:aws:iot:<REGION>:<ACCOUNT_NUMBER>:topic/$aws/things/<SBS_THING_NAME>/shadow/update"
+        ]
+      },
+      {
+        "Effect": "Allow",
+        "Action": [
+          "iot:GetThingShadow",
+          "iot:UpdateThingShadow"
+        ],
+        "Resource": [
+          "arn:aws:iot:<REGION>:<ACCOUNT_NUMBER>:thing/<SBS_THING_NAME>",
+          "arn:aws:iot:<REGION>:<ACCOUNT_NUMBER>:thing/<SBS_THING_NAME>/*"
+        ]
+      },
+      {
+        "Effect": "Allow",
+        "Action": [
+          "iot:Subscribe",
+          "iot:Receive"
+        ],
+        "Resource": [
+          "arn:aws:iot:region:account:topicfilter/$aws/things/<SBS_THING_NAME>/shadow/update/accepted"
+        ]
+      }
+    ]
   }
   ```
 
@@ -158,7 +190,7 @@ npm install -g serverless@0.5.6 yo bower gulp
 
   ```
   aws iot attach-principal-policy --policy-name <POLICY_NAME> --principal arn:aws:iot:<REGION>:<ACCOUNT>:cert/<CERTID>
-  aws iot attach-thing-principal --thing-name <THING_NAME> --principal arn:aws:iot:<REGION>:<ACCOUNT>:cert/<CERTID>
+  aws iot attach-thing-principal --thing-name <SBS_THING_NAME> --principal arn:aws:iot:<REGION>:<ACCOUNT>:cert/<CERTID>
   ```
 
 6. Create a new Cognito Identity Pool and copy the Identity Pool ID to a safe place for later. It is easiest to do this from the AWS console. [Follow the directions here](http://docs.aws.amazon.com/cognito/latest/developerguide/identity-pools.html).
@@ -187,7 +219,8 @@ npm install -g serverless@0.5.6 yo bower gulp
               "Effect": "Allow",
               "Action": "iot:Subscribe",
               "Resource": [
-                  "arn:aws:iot:<REGION>:<REPLACE_WITH_ACCOUNT_NUMBER>:topicfilter/<TOPIC_NAME>/*"
+                  "arn:aws:iot:<REGION>:<REPLACE_WITH_ACCOUNT_NUMBER>:topicfilter/<SBS_TOPIC_NAME>",
+                  "arn:aws:iot:<REGION>:<REPLACE_WITH_ACCOUNT_NUMBER>:topicfilter/<SBS_TOPIC_NAME>/*"
               ]
           }
       ]

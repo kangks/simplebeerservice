@@ -26,10 +26,8 @@ software license above.
 /* CONSTANTS */
 // ============ CHANGE THESE VALUES BELOW =============== //
 
-var COGNITO_IDENTITY_POOL = '<YOUR_COGNITO_IDENTITY_POOL_ID>';
 var IOT_REGION = 'us-east-1';
 var IOTENDPOINT = 'data.iot.'+IOT_REGION+'.amazonaws.com';
-var TOPIC = 'sbs';
 
 // ============ REST OF CODE =============== //
 
@@ -110,9 +108,7 @@ $( document ).ready(function() {
      };
      var iotdata = new AWS.IotData({
        endpoint:IOTENDPOINT
-     });
      iotdata.getThingShadow(params, function (err, data) {
-       if (err) callback(ErrorLog, null); // an error occurred
        else  {
           if (sbsUnits[sbsID]===undefined) {
            var response = JSON.parse(data.payload);
@@ -202,8 +198,6 @@ function initClient(requestUrl) {
     var client = new Paho.MQTT.Client(requestUrl, clientId);
     var connectOptions = {
         onSuccess: function () {
-            console.log('connected');
-            client.subscribe(TOPIC+'/#');
         },
         useSSL: true,
         timeout: 16,
@@ -214,7 +208,6 @@ function initClient(requestUrl) {
     };
 
     client.onMessageArrived = function (message) {
-       //console.log(message.payloadString);
        var record = JSON.parse(message.payloadString);
 
        if (record.deviceId===undefined) {
