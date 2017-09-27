@@ -37,7 +37,6 @@ try {
   });
 
   var topic  = options.topicName + "/" + options.unitid;
-  var shadowTopic = '$aws/things/' + options.unitid + '/shadow/update';
 
   var messages = [
     {"line1":"I :heart: beer!","line2":"How about you?"},
@@ -49,12 +48,11 @@ try {
   var temp = Math.floor((Math.random() * 8)+14);
   var humidity = Math.floor((Math.random() * 20)+40);
   var sound = Math.floor((Math.random() * 100)+100);
-  var beerlevel = Math.floor((Math.random() * 50)+20);
 
   // Creates the JSON Payload to send to AWS IoT
   function generatePayload() {
     var payload = {
-      // "version": "5",
+      "version": "5",
       "deviceId": options.unitid,
       "data": data
     }
@@ -99,14 +97,6 @@ try {
     })
   }
 
-  function updateShadow(unitid, state, onError, onSuccess){
-    var clientTokenUpdate = device.update( unitid, state );
-    if (clientTokenUpdate === null)
-      onError()
-    else
-      onSuccess(clientTokenUpdate);
-  };
-
   // Runs the simulator. Gets a random value for each sensor and Generates
   // a random flow count.
   function run(callback) {
@@ -119,27 +109,9 @@ try {
     populateData('Sound', sound);
     var payload = generatePayload();
     console.log(topic,payload);
-
     device.publish(topic, payload,{ qos: 0, retain: false }, (err)=>{
       if(err) console.log("err:" , err)
     });
-
-    updateShadow( options.unitid, {
-          "state":{
-            "desired":{
-              "data":{
-                "beerlevel": getRandomValue(beerlevel,10,80,5)
-              }
-            }
-          }
-        },
-      ()=>{
-        console.log('update shadow failed, operation still in progress');
-      },
-      ()=>{
-        console.log('beerlevel shadow updated');
-      }
-    );
   }
 
   // Sets only a random value for the Sound sensor.
@@ -163,38 +135,32 @@ try {
       var sbsState = {
         "state":{
           "desired": {
+            "data": {
+              "temp": 10,
+              "humidity": 43
+            },
             "color":[100,150,155],
             "full":"simpleBeerEdison",
-            "short":"edison",
-            "deviceId": options.unitid,
+            "short":"edison"
           }
         }
       };
-
-      updateShadow( options.unitid, sbsState,
-        ()=>{
-          console.log('update shadow failed, operation still in progress');
-        },
-        (clientTokenUpdate)=>{
-          console.log("token:",clientTokenUpdate)
-          console.log("Connected to AWS IoT.");
-          setInterval(run, 1000);
-          setInterval(function() {
-            console.log("Message: ",messages[Math.floor(Math.random()*4)]);
-          },10000);
-
-          // var x = device.get(options.unitid,null);
-          // console.log("x:", x);
-        }
-      );
+      var clientTokenUpdate = device.update( options.unitid, sbsState );
+      if (clientTokenUpdate === null)
+           {
+              console.log('update shadow failed, operation still in progress');
+           }else{
+             console.log("token:",clientTokenUpdate)
+             console.log("Connected to AWS IoT.");
+             setInterval(run, 1000);
+             setInterval(function() {
+               console.log("Message: ",messages[Math.floor(Math.random()*4)]);
+             },10000);
+           }
     });
+
   });
 
-  device.on('status',
-    function(thingName, stat, clientToken, stateObject) {
-      console.log('received '+stat+' on '+thingName+': '+
-                 JSON.stringify(stateObject));
-    });
 } catch (e) {
   console.log(e);
   process.exit();
